@@ -35,7 +35,7 @@ One .NET process hosts both API and worker (POC decision; split documented as pr
 | # | Decision | Rationale (one line each) |
 |---|---|---|
 | D1 | **Service in .NET** (latest LTS, Minimal API) | Deadline was the hardest NFR: "I chose the tool I'm fastest and safest with." Fit is real (I/O orchestrator, mature background/resilience primitives). Result: deliberately polyglot architecture (.NET + PHP + JS/SASS) — technology chosen per compromise, no dogma. |
-| D2 | **Queue = SQS API via ElasticMQ locally** | At-least-once delivery, DLQ via redrive policy (`maxReceiveCount: 5`), retry via visibility timeout. Local container, zero AWS account needed; production = change endpoint URL, zero code change. |
+| D2 | **Queue = SQS API, dual mode** | At-least-once delivery, DLQ via redrive policy (`maxReceiveCount: 5`), retry via visibility timeout. `SQS_ENDPOINT` selects the mode: ElasticMQ container (compose default — evaluator re-runs autonomously, no AWS credentials) or **real SQS** (presentation `.env` with scoped IAM credentials, rotated after). Zero code change between modes. |
 | D3 | **Idempotency owned by the receiver (WP plugin)** | Exactly-once = at-least-once delivery + idempotent receiver. Plugin checks post meta `_pipeline_job_id` before insert; hit → HTTP 200 with existing post, `duplicate: true`. |
 | D4 | **HMAC-SHA256 signatures on both endpoints** | Secret never travels; tampering detected; replay window enforced via timestamp. Stripe/GitHub webhook pattern. Postman collection ships a pre-request script computing the signature. |
 | D5 | **`wp-init` one-shot container (WP-CLI)** | `docker compose up` → WP installed, plugin + theme active, permalinks set. Spike (Story 0, timeboxed); graceful degradation = 3-step manual wizard in README. |
