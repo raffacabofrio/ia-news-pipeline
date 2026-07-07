@@ -1,0 +1,42 @@
+$primary: #174a68;
+$secondary: #c8612c;
+$body-bg: #f4efe8;
+$body-color: #1f2933;
+$font-family-sans-serif: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+$headings-font-family: Georgia, "Times New Roman", serif;
+$border-radius: 1rem;
+$card-border-width: 0;
+
+@import "bootstrap/scss/bootstrap";
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(23, 74, 104, 0.14), transparent 32rem),
+    linear-gradient(180deg, #fcfaf7 0%, #f4efe8 100%);
+}
+
+.site-shell {
+  min-height: 100vh;
+}
+
+.site-hero {
+  background: linear-gradient(135deg, #16324f 0%, #174a68 100%);
+}
+
+.news-card {
+  border-radius: 1.25rem;
+  box-shadow: 0 18px 40px rgba(18, 38, 52, 0.08);
+}
+
+.news-card a {
+  text-decoration: none;
+}
+
+.eyebrow {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
