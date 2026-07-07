@@ -4,7 +4,7 @@ baseline_commit: ff92d1a2d129aa6bc8628b55b21f33c002983080
 
 # Story 2.1: Receiver endpoint
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -201,3 +201,4 @@ Codex GPT-5
 
 - 2026-07-07: S2.1 story context created and marked `ready-for-dev`. Epic 2 advanced from `backlog` to `in-progress`.
 - 2026-07-07: Implemented the WordPress REST receiver, secret env wiring, and live verification helper; story advanced to `review`.
+- 2026-07-07: Closed review follow-up by hardening concurrent idempotency, rejecting content emptied by sanitization, and expanding live verification to cover contract body fields, persisted meta, and concurrent replay; story advanced to `done`.

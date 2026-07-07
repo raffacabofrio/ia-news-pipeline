@@ -47,12 +47,7 @@ function ia_pipeline_handle_posts_request( WP_REST_Request $request ) {
 		return ia_pipeline_success_response( $existing_post_id, true, 200 );
 	}
 
-	$post_id = ia_pipeline_create_post( $payload );
-	if ( is_wp_error( $post_id ) ) {
-		return ia_pipeline_error_response( 'post_creation_failed', 'Unable to create post.', 500 );
-	}
-
-	return ia_pipeline_success_response( $post_id, false, 201 );
+	return ia_pipeline_create_post_with_idempotency_lock( $payload );
 }
 
 function ia_pipeline_authenticate_request( WP_REST_Request $request, $raw_body ) {
@@ -159,12 +154,27 @@ function ia_pipeline_validate_payload( $raw_body ) {
 		return new WP_Error( 'invalid_payload', 'meta.generated_at must be a valid datetime.' );
 	}
 
+	$sanitized_title = sanitize_text_field( $title );
+	if ( '' === $sanitized_title ) {
+		return new WP_Error( 'invalid_payload', 'title must contain visible text.' );
+	}
+
+	$sanitized_excerpt = sanitize_textarea_field( $excerpt );
+	if ( '' === $sanitized_excerpt ) {
+		return new WP_Error( 'invalid_payload', 'excerpt must contain visible text.' );
+	}
+
+	$sanitized_content = wp_kses_post( $content_html );
+	if ( '' === trim( $sanitized_content ) ) {
+		return new WP_Error( 'invalid_payload', 'content_html must contain allowed post content.' );
+	}
+
 	return array(
 		'job_id'       => $job_id,
 		'source_url'   => $source_url,
-		'title'        => $title,
-		'content_html' => $content_html,
-		'excerpt'      => $excerpt,
+		'title'        => $sanitized_title,
+		'content_html' => $sanitized_content,
+		'excerpt'      => $sanitized_excerpt,
 		'meta'         => array(
 			'model'        => $model,
 			'generated_at' => $generated_at,
@@ -205,14 +215,61 @@ function ia_pipeline_find_existing_post_id( $job_id ) {
 	return (int) $posts[0];
 }
 
+function ia_pipeline_create_post_with_idempotency_lock( array $payload ) {
+	$lock_key = ia_pipeline_job_lock_key( $payload['job_id'] );
+	if ( ! add_option( $lock_key, '1', '', false ) ) {
+		$existing_post_id = ia_pipeline_wait_for_existing_post_id( $payload['job_id'] );
+		if ( null !== $existing_post_id ) {
+			return ia_pipeline_success_response( $existing_post_id, true, 200 );
+		}
+
+		return ia_pipeline_error_response( 'duplicate_in_progress', 'A delivery for this job is already being processed.', 409 );
+	}
+
+	$post_id = null;
+
+	try {
+		$existing_post_id = ia_pipeline_find_existing_post_id( $payload['job_id'] );
+		if ( null !== $existing_post_id ) {
+			return ia_pipeline_success_response( $existing_post_id, true, 200 );
+		}
+
+		$post_id = ia_pipeline_create_post( $payload );
+		if ( is_wp_error( $post_id ) ) {
+			return ia_pipeline_error_response( 'post_creation_failed', 'Unable to create post.', 500 );
+		}
+
+		return ia_pipeline_success_response( $post_id, false, 201 );
+	} finally {
+		delete_option( $lock_key );
+	}
+}
+
+function ia_pipeline_job_lock_key( $job_id ) {
+	return 'ia_pipeline_job_lock_' . md5( $job_id );
+}
+
+function ia_pipeline_wait_for_existing_post_id( $job_id, $attempts = 50, $sleep_microseconds = 100000 ) {
+	for ( $attempt = 0; $attempt < $attempts; $attempt++ ) {
+		$existing_post_id = ia_pipeline_find_existing_post_id( $job_id );
+		if ( null !== $existing_post_id ) {
+			return $existing_post_id;
+		}
+
+		usleep( $sleep_microseconds );
+	}
+
+	return null;
+}
+
 function ia_pipeline_create_post( array $payload ) {
 	$post_id = wp_insert_post(
 		array(
 			'post_type'    => 'post',
 			'post_status'  => 'publish',
-			'post_title'   => sanitize_text_field( $payload['title'] ),
-			'post_content' => wp_kses_post( $payload['content_html'] ),
-			'post_excerpt' => sanitize_textarea_field( $payload['excerpt'] ),
+			'post_title'   => $payload['title'],
+			'post_content' => $payload['content_html'],
+			'post_excerpt' => $payload['excerpt'],
 		),
 		true
 	);
