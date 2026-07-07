@@ -13,9 +13,6 @@
 # Queue naming (consumed as QUEUE_NAME default by S0.2 / Epic 1):
 #   main queue: pipeline-jobs · DLQ: pipeline-jobs-dlq (redrive maxReceiveCount = 5, frozen by D2)
 #
-# The .NET `service` container joins this file in a later story (Epic 1); it will use the same
-# default network and the env conventions above (SQS_ENDPOINT=http://elasticmq:9324, QUEUE_NAME=pipeline-jobs).
-#
 # Local-only credentials below are deliberate compose defaults (NFR4: real secrets only via env).
 
 services:
@@ -24,7 +21,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-local-root-secret}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-wordpress}       # WP schema; `pipeline` schema created by init SQL
-      MYSQL_USER: ${MYSQL_USER:-wordpress}               # if you change this, also change docker/mysql-init/01-pipeline-schema.sql
+      MYSQL_USER: ${MYSQL_USER:-wordpress}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-wordpress}
     volumes:
       - mysql_data:/var/lib/mysql
@@ -43,6 +40,25 @@ services:
     volumes:
       - ./docker/elasticmq.conf:/opt/elasticmq.conf:ro
 
+  service:
+    build:
+      context: .
+      dockerfile: ./service/IaNewsPipeline.Api/Dockerfile
+    depends_on:
+      mysql:
+        condition: service_healthy
+      elasticmq:
+        condition: service_started
+    ports:
+      - "${SERVICE_PORT:-8081}:8080"
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-replace-me}
+      SQS_ENDPOINT: ${SQS_ENDPOINT:-http://elasticmq:9324}
+      QUEUE_NAME: ${QUEUE_NAME:-pipeline-jobs}
+      WP_WEBHOOK_URL: ${WP_WEBHOOK_URL:-http://wordpress/wp-json/ia-pipeline/v1/posts}
+      PIPELINE_SHARED_SECRET: ${PIPELINE_SHARED_SECRET:-replace-me}
+      MYSQL_CONNECTION: ${MYSQL_CONNECTION:-Server=mysql;Port=3306;Database=pipeline;Uid=wordpress;Pwd=wordpress;}
+
   wordpress:
     image: wordpress:6.8-apache
     depends_on:
@@ -53,9 +69,9 @@ services:
     environment:
       WORDPRESS_DB_HOST: mysql
       WORDPRESS_DB_NAME: ${MYSQL_DATABASE:-wordpress}
-      PIPELINE_SHARED_SECRET: ${PIPELINE_SHARED_SECRET:-replace-me}
       WORDPRESS_DB_USER: ${MYSQL_USER:-wordpress}
       WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD:-wordpress}
+      PIPELINE_SHARED_SECRET: ${PIPELINE_SHARED_SECRET:-replace-me}
     volumes:
       - wp_data:/var/www/html
       - ./wp-plugin/ia-pipeline-receiver:/var/www/html/wp-content/plugins/ia-pipeline-receiver
@@ -77,7 +93,8 @@ services:
       WORDPRESS_DB_NAME: ${MYSQL_DATABASE:-wordpress}
       WORDPRESS_DB_USER: ${MYSQL_USER:-wordpress}
       WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD:-wordpress}
-      WP_URL: ${WP_URL:-http://localhost:8080}
+      WP_PORT: ${WP_PORT:-8080}
+      WP_URL: ${WP_URL:-}
       WP_TITLE: ${WP_TITLE:-IA News}
       WP_ADMIN_USER: ${WP_ADMIN_USER:-admin}
       WP_ADMIN_PASSWORD: ${WP_ADMIN_PASSWORD:-admin}     # local-only default; override for anything non-local

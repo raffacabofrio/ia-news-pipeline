@@ -53,19 +53,19 @@ story_location: _bmad-output/implementation-artifacts
 
 development_status:
   epic-0: in-progress
-  0-1-spike-one-command-environment: review
-  0-2-repo-scaffolding-ci: backlog
+  0-1-spike-one-command-environment: done
+  0-2-repo-scaffolding-ci: done
   epic-0-retrospective: optional
-  epic-1: backlog
-  1-1-intake-api-job-store: backlog
+  epic-1: in-progress
+  1-1-intake-api-job-store: review
   1-2-worker-pipeline: backlog
   1-3-unit-tests: backlog
   epic-1-retrospective: optional
-  epic-2: backlog
+  epic-2: in-progress
   2-1-receiver-endpoint: review
   epic-2-retrospective: optional
-  epic-3: backlog
-  3-1-theme-scaffold-build: backlog
+  epic-3: in-progress
+  3-1-theme-scaffold-build: review
   3-2-single-php-centerpiece: backlog
   epic-3-retrospective: optional
   epic-4: backlog
