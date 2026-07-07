@@ -1,0 +1,93 @@
+# ia-news-pipeline — local stack (Story S0.1)
+#
+# One command from a clean clone: `docker compose up`
+# No .env file is required: every variable below has a local-only default
+# (override via environment or an optional .env if you want different values).
+#
+# Services (architecture §1 topology):
+#   mysql      — one instance, two schemas: `wordpress` (WP) + `pipeline` (jobs table arrives in S1.1)
+#   elasticmq  — SQS-compatible endpoint on :9324 (architecture D2; real SQS selected later via SQS_ENDPOINT)
+#   wordpress  — WP on http://localhost:${WP_PORT:-8080} with bind-mounted placeholder plugin/theme
+#   wp-init    — one-shot WP-CLI bootstrap (architecture D5); it EXITS 0 when done — that is expected
+#
+# Queue naming (consumed as QUEUE_NAME default by S0.2 / Epic 1):
+#   main queue: pipeline-jobs · DLQ: pipeline-jobs-dlq (redrive maxReceiveCount = 5, frozen by D2)
+#
+# The .NET `service` container joins this file in a later story (Epic 1); it will use the same
+# default network and the env conventions above (SQS_ENDPOINT=http://elasticmq:9324, QUEUE_NAME=pipeline-jobs).
+#
+# Local-only credentials below are deliberate compose defaults (NFR4: real secrets only via env).
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-local-root-secret}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-wordpress}       # WP schema; `pipeline` schema created by init SQL
+      MYSQL_USER: ${MYSQL_USER:-wordpress}               # if you change this, also change docker/mysql-init/01-pipeline-schema.sql
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-wordpress}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  elasticmq:
+    image: softwaremill/elasticmq-native:1.6.5
+    ports:
+      - "${ELASTICMQ_PORT:-9324}:9324"   # SQS-compatible API: aws sqs --endpoint-url http://localhost:9324 list-queues
+    volumes:
+      - ./docker/elasticmq.conf:/opt/elasticmq.conf:ro
+
+  wordpress:
+    image: wordpress:6.8-apache
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "${WP_PORT:-8080}:80"
+    environment:
+      WORDPRESS_DB_HOST: mysql
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE:-wordpress}
+      WORDPRESS_DB_USER: ${MYSQL_USER:-wordpress}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD:-wordpress}
+    volumes:
+      - wp_data:/var/www/html
+      - ./wp-plugin/ia-pipeline-receiver:/var/www/html/wp-content/plugins/ia-pipeline-receiver
+      - ./wp-theme/ia-news-theme:/var/www/html/wp-content/themes/ia-news-theme
+
+  # One-shot bootstrap (WP-CLI). Runs once, exits 0 — "wp-init exited with code 0" in the
+  # compose output is SUCCESS, not an error. Idempotent: safe on every `docker compose up`.
+  wp-init:
+    image: wordpress:cli-2.12-php8.3
+    restart: "no"
+    user: "33:33"   # debian www-data uid/gid (matches the wordpress apache container; alpine's www-data is 82)
+    depends_on:
+      mysql:
+        condition: service_healthy
+      wordpress:
+        condition: service_started
+    environment:
+      WORDPRESS_DB_HOST: mysql
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE:-wordpress}
+      WORDPRESS_DB_USER: ${MYSQL_USER:-wordpress}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD:-wordpress}
+      WP_URL: ${WP_URL:-http://localhost:8080}
+      WP_TITLE: ${WP_TITLE:-IA News}
+      WP_ADMIN_USER: ${WP_ADMIN_USER:-admin}
+      WP_ADMIN_PASSWORD: ${WP_ADMIN_PASSWORD:-admin}     # local-only default; override for anything non-local
+      WP_ADMIN_EMAIL: ${WP_ADMIN_EMAIL:-admin@example.com}
+    volumes:
+      - wp_data:/var/www/html
+      - ./wp-plugin/ia-pipeline-receiver:/var/www/html/wp-content/plugins/ia-pipeline-receiver
+      - ./wp-theme/ia-news-theme:/var/www/html/wp-content/themes/ia-news-theme
+      - ./docker/wp-init.sh:/usr/local/bin/wp-init.sh:ro
+    entrypoint: ["sh", "/usr/local/bin/wp-init.sh"]
+
+volumes:
+  mysql_data:
+  wp_data:

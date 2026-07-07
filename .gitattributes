@@ -1,0 +1,6 @@
+# Shell scripts run inside Linux containers — they must keep LF endings
+# even when the repo is cloned on Windows (AC1: clean clone works anywhere).
+*.sh text eol=lf
+*.sql text eol=lf
+*.conf text eol=lf
+docker-compose.yml text eol=lf
