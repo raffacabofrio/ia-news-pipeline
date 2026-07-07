@@ -73,6 +73,8 @@ public sealed class GeneratePostApiTests
     [Theory]
     [InlineData("""{"url":"notaurl"}""")]
     [InlineData("""{"url":"http://localhost/article"}""")]
+    [InlineData("""{"url":"http://0.0.0.0/article"}""")]
+    [InlineData("""{"url":"http://[fd00::1]/article"}""")]
     [InlineData("""{}""")]
     public async Task Post_generate_post_returns_400_for_invalid_payload(string payload)
     {

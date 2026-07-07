@@ -13,12 +13,7 @@ public sealed class SqsJobQueue : IJobQueue
     public SqsJobQueue(string endpoint, string queueName)
     {
         _queueName = queueName;
-        _client = new AmazonSQSClient(
-            new BasicAWSCredentials("local", "local"),
-            new AmazonSQSConfig
-            {
-                ServiceURL = endpoint,
-            });
+        _client = CreateClient(endpoint);
     }
 
     public async Task EnqueueAsync(Guid jobId, CancellationToken cancellationToken)
@@ -30,5 +25,29 @@ public sealed class SqsJobQueue : IJobQueue
             QueueUrl = _queueUrl,
             MessageBody = jobId.ToString(),
         }, cancellationToken);
+    }
+
+    private static AmazonSQSClient CreateClient(string endpoint)
+    {
+        var config = new AmazonSQSConfig
+        {
+            ServiceURL = endpoint,
+        };
+
+        return IsLocalEndpoint(endpoint)
+            ? new AmazonSQSClient(new BasicAWSCredentials("local", "local"), config)
+            : new AmazonSQSClient(config);
+    }
+
+    private static bool IsLocalEndpoint(string endpoint)
+    {
+        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        return uri.IsLoopback ||
+            string.Equals(uri.Host, "elasticmq", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(uri.Host, "host.docker.internal", StringComparison.OrdinalIgnoreCase);
     }
 }

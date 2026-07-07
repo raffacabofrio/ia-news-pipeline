@@ -4,7 +4,7 @@ baseline_commit: ff92d1a2d129aa6bc8628b55b21f33c002983080
 
 # Story 1.1: Intake API + job store
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -44,6 +44,12 @@ so that the rewrite pipeline can process the request asynchronously and I can la
 - [x] Task 5: Add focused tests for intake behavior (AC: 1, 2, 4, 5)
   - [x] Add service tests that prove valid intake returns `202`, bad signature returns `401`, invalid body returns `400`, and unknown job returns `404`.
   - [x] Prefer test seams around HMAC verification, request validation, and persistence/queue orchestration; do not wait for S1.3 to add the first real behavior tests if they are needed to keep this story safe.
+
+### Review Findings
+
+- [x] [Review][Patch] Queue adapter hardcodes fake AWS credentials, so the "same code works with ElasticMQ now and real SQS later" contract is not actually met [service/IaNewsPipeline.Api/Queueing/SqsJobQueue.cs:13]
+- [x] [Review][Patch] Public URL validation accepts non-public IP ranges such as `0.0.0.0` and IPv6 ULA (`fc00::/7`), so invalid intake URLs can still be accepted instead of returning `400` [service/IaNewsPipeline.Api/Validation/PublicUrlValidator.cs:22]
+- [x] [Review][Patch] The test suite does not cover the rejected-address cases above, so the URL-validation contract can regress without detection [service/IaNewsPipeline.Tests/GeneratePostApiTests.cs:73]
 
 ## Dev Notes
 
@@ -210,3 +216,4 @@ Codex GPT-5
 
 - 2026-07-07: Story created and contexted for development. Status -> ready-for-dev.
 - 2026-07-07: Implemented intake API, MySQL job store, SQS-compatible enqueue, compose wiring, and focused API tests. Status -> review.
+- 2026-07-07: Addressed review findings for SQS credential mode selection and non-public URL rejection coverage. Status -> done.
