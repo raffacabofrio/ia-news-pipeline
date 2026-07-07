@@ -27,11 +27,11 @@ Compose stack: `wordpress`, `mysql` (schemas `wordpress` + `pipeline`), `elastic
 **Done when:** contract §5.2 responses exact; bad signature → 401; invalid body → 400.
 
 ### S1.2 — Worker pipeline
-BackgroundService long-polling SQS: fetch URL → SmartReader extraction → OpenAI (JSON-structured output: title, content_html, excerpt) → HMAC-sign → POST webhook (contract §5.1) → job row updates through states → delete message. Failure classification per architecture §3: transient → message NOT deleted (SQS redelivers); permanent → `failed` + delete. Structured logs with `job_id` on every line.
-**Done when:** happy path publishes; WP-down scenario retries then succeeds after WP returns; invalid URL fails fast with reason.
+BackgroundService long-polling SQS: fetch URL → SmartReader extraction → OpenAI (JSON-structured output: title, content_html, excerpt) → HMAC-sign → POST webhook (contract §5.1) → job row updates through states → delete message. Failure classification per architecture §3: transient → message NOT deleted (SQS redelivers); permanent (invalid URL, 404, non-article/empty extraction) → `failed` + delete. Structured logs with `job_id` on every line.
+**Done when:** verified against a contract-§5.1 stub webhook (this story does NOT depend on Epic 2): happy path sends the exact §5.1 request shape and handles 201, 200 `duplicate:true`, 401 and 422 responses correctly; stub-unavailable scenario → message redelivered, then succeeds once stub returns; invalid URL and non-article page fail fast with reason. Real end-to-end verification belongs to S4.3.
 
 ### S1.3 — Unit tests
-Extraction normalization, payload building, HMAC signing (known test vectors), transient-vs-permanent classification, idempotent replay handling of webhook 200/duplicate.
+Extraction normalization, payload building, HMAC signing (known test vectors), transient-vs-permanent classification (including non-article/empty extraction → permanent), idempotent replay handling of webhook 200/duplicate.
 **Done when:** `dotnet test` green in CI, meaningful assertions (no placeholder).
 
 ## Epic 2 — WordPress Plugin — parallel workstream B
@@ -48,7 +48,7 @@ Plugin `ia-pipeline-receiver`: register `POST /wp-json/ia-pipeline/v1/posts`; HM
 
 ### S3.2 — single.php centerpiece
 Polished single-post layout: typography, readable measure, excerpt lead, source attribution block (links `source_url` meta), "AI-generated" badge, responsive.
-**Done when:** a post created via the pipeline renders visibly designed (not default-theme look).
+**Done when:** verified with a manually created post carrying the pipeline meta fields (`_pipeline_job_id`, `source_url`, model) — this story does NOT depend on Epics 1–2; pipeline-created post verification belongs to S4.3. Objective checks: content column has constrained readable measure (not full-width); excerpt renders as styled lead paragraph; source attribution block present and links `source_url`; "AI-generated" badge visible; layout holds at 375px mobile width.
 
 ## Epic 4 — Delivery (closes the day)
 
