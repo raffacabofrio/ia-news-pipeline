@@ -7,7 +7,7 @@ $headings-font-family: Georgia, "Times New Roman", serif;
 $border-radius: 1rem;
 $card-border-width: 0;
 
-@import "bootstrap/scss/bootstrap";
+@use "bootstrap/scss/bootstrap";
 
 :root {
   color-scheme: light;

@@ -1,11 +1,11 @@
 {
   "src/scripts/main.js": {
-    "file": "assets/theme-BlpOkkor.js",
+    "file": "assets/theme-BvJ0kMl2.js",
     "name": "theme",
     "src": "src/scripts/main.js",
     "isEntry": true,
     "css": [
-      "assets/theme-BwSOVTfs.css"
+      "assets/theme-B4A9oVHy.css"
     ]
   }
 }

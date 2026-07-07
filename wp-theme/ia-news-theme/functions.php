@@ -3,6 +3,28 @@
  * Theme bootstrap for IA News Theme.
  */
 
+if ( ! function_exists( 'ia_news_theme_read_asset_manifest' ) ) {
+	function ia_news_theme_read_asset_manifest( $manifest_path ) {
+		if ( ! file_exists( $manifest_path ) || ! is_readable( $manifest_path ) ) {
+			return array();
+		}
+
+		$manifest_contents = file_get_contents( $manifest_path );
+
+		if ( false === $manifest_contents || '' === trim( $manifest_contents ) ) {
+			return array();
+		}
+
+		try {
+			$decoded = json_decode( $manifest_contents, true, 512, JSON_THROW_ON_ERROR );
+		} catch ( JsonException $exception ) {
+			return array();
+		}
+
+		return is_array( $decoded ) ? $decoded : array();
+	}
+}
+
 if ( ! function_exists( 'ia_news_theme_get_asset_manifest' ) ) {
 	function ia_news_theme_get_asset_manifest() {
 		static $manifest = null;
@@ -12,14 +34,7 @@ if ( ! function_exists( 'ia_news_theme_get_asset_manifest' ) ) {
 		}
 
 		$manifest_path = get_theme_file_path( 'assets/dist/.vite/manifest.json' );
-
-		if ( ! file_exists( $manifest_path ) ) {
-			$manifest = array();
-			return $manifest;
-		}
-
-		$decoded  = json_decode( file_get_contents( $manifest_path ), true );
-		$manifest = is_array( $decoded ) ? $decoded : array();
+		$manifest = ia_news_theme_read_asset_manifest( $manifest_path );
 
 		return $manifest;
 	}

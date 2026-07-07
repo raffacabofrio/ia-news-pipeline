@@ -4,7 +4,7 @@ baseline_commit: ff92d1a2d129aa6bc8628b55b21f33c002983080
 
 # Story 3.1: Theme scaffold + build
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -40,6 +40,13 @@ so that the site already looks intentionally custom and the evaluator can see th
   - [x] Run `npm run build` in `wp-theme/ia-news-theme/` and commit the generated production assets.
   - [x] Verify the active theme still renders in the existing compose environment and that the page loads the compiled assets from the theme directory.
   - [x] Record the exact verification commands/outcomes in the story completion notes for the dev-story run.
+
+### Review Findings
+
+- [x] [Review][Patch] Declare the supported Node floor in `wp-theme/ia-news-theme/package.json` so the pinned Vite toolchain fails early on unsupported runtimes.
+- [x] [Review][Patch] Harden `wp-theme/ia-news-theme/functions.php` so unreadable, empty, or corrupted Vite manifest files fail closed instead of leaking runtime warnings or partial asset state.
+- [x] [Review][Patch] Expand theme coverage with a runtime-oriented PHP verification path that exercises manifest parsing and enqueue behavior closer to the WordPress environment required by AC2.
+- [x] [Review][Note] Replaced the theme-local Sass `@import` with `@use`; remaining deprecation warnings come from upstream Bootstrap 5.3.8 internals and are documented as residual scope outside this story.
 
 ## Dev Notes
 
@@ -175,6 +182,7 @@ Codex GPT-5
 - No `project-context.md` files were present in the workspace during story creation.
 - No dedicated UX artifact exists; S3.1 therefore focuses on objective scaffold/build guidance and leaves the subjective visual criteria to S3.2.
 - Existing theme code is still the placeholder created in S0.1: only `style.css` and `index.php` exist under `wp-theme/ia-news-theme/`; no `functions.php`, no `package.json`, no Vite config, no Sass source tree.
+- Review follow-up pass targeted findings around Node runtime declaration, manifest-read hardening, and stronger runtime-oriented coverage before closing the story.
 
 ### Completion Notes List
 
@@ -189,10 +197,23 @@ Codex GPT-5
   - `npm test` passed (`4/4`).
   - `npm run build` passed and regenerated `assets/dist/.vite/manifest.json`, `assets/dist/assets/theme-BwSOVTfs.css`, and `assets/dist/assets/theme-BlpOkkor.js`.
   - `dotnet test service/IaNewsPipeline.sln` passed (`9/9`); existing `AWSSDK.Core` low-severity vulnerability warnings remained pre-existing and unrelated to this story.
-  - `docker compose up -d mysql elasticmq wordpress wp-init` completed after one transient Docker recreate conflict on `wordpress`; the retry succeeded.
-  - `docker compose exec -T wordpress php -r "require '/var/www/html/wp-load.php'; echo wp_get_theme()->get_stylesheet();"` returned `ia-news-theme`.
-  - `Invoke-WebRequest http://localhost:8080` returned HTML containing `wp-content/themes/ia-news-theme/assets/dist/assets/theme-BwSOVTfs.css` and `wp-content/themes/ia-news-theme/assets/dist/assets/theme-BlpOkkor.js`.
+- `docker compose up -d mysql elasticmq wordpress wp-init` completed after one transient Docker recreate conflict on `wordpress`; the retry succeeded.
+- `docker compose exec -T wordpress php -r "require '/var/www/html/wp-load.php'; echo wp_get_theme()->get_stylesheet();"` returned `ia-news-theme`.
+- `Invoke-WebRequest http://localhost:8080` returned HTML containing `wp-content/themes/ia-news-theme/assets/dist/assets/theme-BwSOVTfs.css` and `wp-content/themes/ia-news-theme/assets/dist/assets/theme-BlpOkkor.js`.
 - Bootstrap 5.3.8 currently emits Sass deprecation warnings during `npm run build` because its upstream Sass sources still rely on deprecated APIs; the build remains successful and reproducible.
+- Review follow-up changes:
+  - Added `engines.node` to `package.json` with the Vite-supported Node floor (`>=20.19.0 || >=22.12.0`).
+  - Split manifest loading into a fail-closed helper in `functions.php` so unreadable, empty, and corrupted manifest content resolves to an empty asset set safely.
+  - Added `tests/theme-functions-runtime.php` and verified it through the real PHP runtime in the `wordpress` container.
+  - Switched `src/styles/main.scss` from `@import` to `@use`; the remaining Sass deprecation warnings now come only from upstream Bootstrap 5.3.8 internals.
+- Review follow-up verification commands and outcomes:
+  - `npm test` passed (`5/5`).
+  - `npm run build` passed and regenerated `assets/dist/.vite/manifest.json`, `assets/dist/assets/theme-B4A9oVHy.css`, and `assets/dist/assets/theme-BvJ0kMl2.js`.
+  - `docker compose exec -T wordpress php -l /var/www/html/wp-content/themes/ia-news-theme/functions.php` passed with no syntax errors.
+  - `docker compose exec -T wordpress php /var/www/html/wp-content/themes/ia-news-theme/tests/theme-functions-runtime.php` passed.
+  - `docker compose exec -T wordpress php -r "require '/var/www/html/wp-load.php'; echo wp_get_theme()->get_stylesheet();"` returned `ia-news-theme`.
+  - `curl.exe -s http://localhost:8080` returned HTML containing the rebuilt local asset URLs for the theme CSS and JS bundles.
+  - `dotnet test service/IaNewsPipeline.sln` passed (`11/11`); the pre-existing low-severity `AWSSDK.Core` advisory warning remains unrelated to this story.
 
 ### File List
 
@@ -200,8 +221,8 @@ Codex GPT-5
 - _bmad-output/implementation-artifacts/3-1-theme-scaffold-build.md (modified)
 - _bmad-output/implementation-artifacts/sprint-status.yaml (modified)
 - wp-theme/ia-news-theme/assets/dist/.vite/manifest.json (new)
-- wp-theme/ia-news-theme/assets/dist/assets/theme-BlpOkkor.js (new)
-- wp-theme/ia-news-theme/assets/dist/assets/theme-BwSOVTfs.css (new)
+- wp-theme/ia-news-theme/assets/dist/assets/theme-B4A9oVHy.css (new)
+- wp-theme/ia-news-theme/assets/dist/assets/theme-BvJ0kMl2.js (new)
 - wp-theme/ia-news-theme/footer.php (new)
 - wp-theme/ia-news-theme/functions.php (new)
 - wp-theme/ia-news-theme/header.php (new)
@@ -212,6 +233,7 @@ Codex GPT-5
 - wp-theme/ia-news-theme/src/scripts/main.js (new)
 - wp-theme/ia-news-theme/src/styles/main.scss (new)
 - wp-theme/ia-news-theme/style.css (modified)
+- wp-theme/ia-news-theme/tests/theme-functions-runtime.php (new)
 - wp-theme/ia-news-theme/tests/theme-scaffold.test.mjs (new)
 - wp-theme/ia-news-theme/vite.config.mjs (new)
 
@@ -219,3 +241,4 @@ Codex GPT-5
 
 - 2026-07-07: Story created via `bmad-create-story` for Epic 3 S3.1. Status -> ready-for-dev.
 - 2026-07-07: Implemented the WordPress theme-local Vite/Bootstrap/Sass scaffold, committed production assets, and moved status to `review`.
+- 2026-07-07: Closed review follow-ups for Node engine declaration, manifest hardening, and runtime-oriented theme coverage; story advanced to `done`.

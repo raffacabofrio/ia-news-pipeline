@@ -19,8 +19,11 @@ test("theme keeps the required WordPress metadata header", () => {
 test("theme enqueues compiled assets through a manifest-aware function", () => {
   const functionsPhp = readThemeFile("functions.php");
 
+  assert.match(functionsPhp, /ia_news_theme_read_asset_manifest/);
   assert.match(functionsPhp, /wp_enqueue_scripts/);
   assert.match(functionsPhp, /manifest\.json/);
+  assert.match(functionsPhp, /is_readable/);
+  assert.match(functionsPhp, /JSON_THROW_ON_ERROR/);
   assert.match(functionsPhp, /wp_enqueue_style/);
   assert.match(functionsPhp, /wp_enqueue_script/);
 });
@@ -40,4 +43,10 @@ test("build output includes a manifest and compiled theme assets", () => {
   assert.ok(entry, "expected manifest entry for src/scripts/main.js");
   assert.match(entry.file, /^assets\/theme-.*\.js$/);
   assert.ok(Array.isArray(entry.css) && entry.css.length > 0, "expected at least one compiled css asset");
+});
+
+test("theme declares the supported Node.js floor for the pinned Vite toolchain", () => {
+  const packageJson = JSON.parse(readThemeFile("package.json"));
+
+  assert.equal(packageJson.engines.node, ">=20.19.0 || >=22.12.0");
 });
