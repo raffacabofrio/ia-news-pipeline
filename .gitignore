@@ -1,0 +1,17 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# BMAD personal configs
+_bmad/config.user.toml
+_bmad/custom/config.user.toml
+
+# Dependencies / build
+node_modules/
+dist/
+vendor/
+
+# OS / editor
+.DS_Store
+Thumbs.db
