@@ -2,7 +2,7 @@
 
 > Pipeline de ponta a ponta que recebe a URL de um artigo público, gera uma nova versão do conteúdo com IA generativa e publica automaticamente em um site WordPress — desafio técnico do Portal Tela, **entregue em 1 dia de um prazo de 3**, com processo de engenharia documentado e auditável neste próprio repositório.
 
-<!-- TODO(S4.2): badge do CI quando o workflow existir -->
+<!-- TODO(S4.2): adicionar badge quando o repositório público estiver estabilizado -->
 
 ---
 
@@ -10,7 +10,7 @@
 
 | | Status | Detalhe |
 |---|---|---|
-| 🟢 **Entregue** | <!-- TODO(S4.2): confirmar --> | Pipeline completo: serviço .NET (accept assíncrono + fila SQS com DLQ + worker) → plugin WordPress (webhook autenticado, idempotente) → tema Bootstrap (build Vite/SASS, foco em `single.php`). Testes unitários em CI, logs estruturados, ambiente completo com um comando. |
+| 🟢 **Entregue** | Implementado no repositório | Pipeline completo: serviço .NET (accept assíncrono + fila SQS com DLQ + worker) → plugin WordPress (webhook autenticado, idempotente) → tema Bootstrap (build Vite/SASS, foco em `single.php`). Workflow de CI versionado, testes automatizados do serviço e ambiente local com um comando. |
 | 🟡 **Riscos conhecidos** | Documentados | Extração de conteúdo é "boa o suficiente" para páginas de blog/notícia — casos extremos mapeados, não perseguidos. Endpoint de status sem auth (POC). Lista completa em [Fora do escopo](#fora-do-escopo--e-o-caminho-de-produção). |
 | 🔴 **Não fazer ainda** | Deliberado | Nada aqui está pronto para produção sem os passos da seção [Caminho de produção](#caminho-de-produção). POC é POC — e dizer isso com clareza faz parte da entrega. |
 | ▶️ **Próximo passo como produto** | Visão | De POC a ferramenta editorial: fila de curadoria (rascunho + aprovação humana em vez de publicação direta), métricas de custo por post, A/B de títulos. Estimativa e priorização mediante conversa com a redação. |
@@ -25,9 +25,9 @@ O método foi **Spec-Driven Development** com o framework [BMAD](https://docs.bm
 2. [`architecture.md`](_bmad-output/planning-artifacts/architecture.md) — decisões com trade-offs registrados e o **contrato JSON congelado** (§5), que é a única interface entre os componentes
 3. [`epics-stories.md`](_bmad-output/planning-artifacts/epics-stories.md) — o trabalho fatiado em stories dimensionadas para sessões isoladas de agentes de IA
 
-A implementação rodou como **pipeline multiagente com contexto isolado**: cada componente (`service/`, `wp-plugin/`, `wp-theme/`) foi construído por um agente que recebeu *apenas* a sua story e o contrato — nenhum agente leu o raciocínio de outro. O QA final foi **cego**: um revisor isolado verificou os critérios de aceite contra a stack rodando, sem acesso a nenhuma justificativa de quem implementou. Isolamento é o que impede o "confia em mim" de substituir verificação.
+A implementação rodou como **pipeline multiagente com contexto isolado**: cada componente (`service/`, `wp-plugin/`, `wp-theme/`) foi construído por um agente que recebeu *apenas* a sua story e o contrato — nenhum agente leu o raciocínio de outro. O **QA cego** faz parte do fechamento planejado (`S4.3`): um revisor isolado valida os critérios de aceite contra a stack rodando, sem acesso à justificativa de quem implementou. Isolamento é o que impede o "confia em mim" de substituir verificação.
 
-O histórico de commits é o registro auditável: planejamento pela manhã, três frentes paralelas, QA no fim. <!-- TODO(S4.2): linkar commits-chave e horários reais -->
+O histórico de commits é o registro auditável da execução em um único dia: stories e readiness foram fechadas às `16:08` (`8f9c15c` logo depois materializa o ambiente one-command), as três frentes paralelas começaram por volta de `20:00` (`cde008b`, `69e6c91`, `041a818`) e os últimos fechamentos técnicos desta leva ocorreram entre `21:05` e `21:21` (`2f8db7a`, `e5efed8`, `024960a`).
 
 ### Modelos de IA usados estrategicamente
 
@@ -92,8 +92,6 @@ Os dois endpoints são autenticados com **assinatura HMAC-SHA256** (padrão Stri
 
 ## Como rodar
 
-<!-- TODO(S4.2): validar comandos exatos após S0.1 -->
-
 ```bash
 git clone https://github.com/raffacabofrio/ia-news-pipeline.git
 cd ia-news-pipeline
@@ -101,20 +99,43 @@ cp .env.example .env   # preencha OPENAI_API_KEY e PIPELINE_SHARED_SECRET
 docker compose up
 ```
 
-O compose sobe WordPress + MySQL + ElasticMQ + serviço, **com o WordPress já instalado e plugin/tema ativados** (container one-shot com WP-CLI — sem wizard manual).
+O compose sobe `mysql`, `elasticmq`, `service`, `worker`, `wordpress` e o bootstrap `wp-init`, **com o WordPress já instalado e plugin/tema ativados** (container one-shot com WP-CLI — sem wizard manual). O arquivo `.env` é recomendado para preencher os dois segredos reais da POC; os demais valores já têm defaults locais no `docker-compose.yml`.
 
 | Serviço | URL |
 |---|---|
-| WordPress | <!-- TODO(S4.2) --> |
-| API do serviço | <!-- TODO(S4.2) --> |
+| WordPress | `http://localhost:8080` |
+| API do serviço | `http://localhost:8081` |
 
 ## Testando
 
-<!-- TODO(S4.2): exemplos reais de request/response + roteiro do drill de resiliência -->
+1. Suba a stack com `docker compose up` e confirme que o bootstrap terminou com `wp-init exited with code 0` (isso é sucesso, não erro).
+2. Gere uma assinatura HMAC-SHA256 sobre `timestamp.payload` com o mesmo `PIPELINE_SHARED_SECRET` do `.env`, então dispare `POST /api/generate-post` para `http://localhost:8081/api/generate-post` com body `{"url":"https://example.com/article"}`.
+3. Use o `job_id` retornado no `202 Accepted` para consultar `GET http://localhost:8081/api/jobs/{id}` até o estado chegar a `published` ou `failed`.
+4. Abra o WordPress em `http://localhost:8080` e confirme o post publicado no tema customizado.
+5. Drill de resiliência: `docker compose stop wordpress` → dispare uma URL → observe o job ficar pendente de publicação → `docker compose start wordpress` → o worker deve concluir a entrega sem duplicar o post.
 
-1. Importe a coleção em [`postman/`](postman/) e configure o environment (URL + segredo).
-2. Happy path: `POST /api/generate-post` com a URL de um artigo → acompanhe `GET /api/jobs/{id}` até `published` → veja o post no tema.
-3. Drill de resiliência: `docker compose stop wordpress` → dispare uma URL → observe os retries → `docker compose start wordpress` → post publicado exatamente uma vez.
+Exemplo mínimo do contrato de entrada:
+
+```http
+POST /api/generate-post
+Content-Type: application/json
+X-Pipeline-Timestamp: <unix-seconds>
+X-Pipeline-Signature: sha256=<hmac(timestamp + "." + body)>
+
+{"url":"https://example.com/article"}
+```
+
+Exemplo mínimo de resposta de aceite:
+
+```json
+{
+  "job_id": "6f9e1b9b-7f9e-4c4b-a08d-4e9c9a7e18a0",
+  "state": "queued",
+  "status_url": "/api/jobs/6f9e1b9b-7f9e-4c4b-a08d-4e9c9a7e18a0"
+}
+```
+
+`S4.1` ainda deve entregar a coleção Postman para automatizar essa assinatura e transformar este roteiro em clique-a-clique.
 
 ## Fora do escopo — e o caminho de produção
 
@@ -140,11 +161,9 @@ O desenho local → AWS, peça a peça, com custo em mente:
 
 ## Qualidade
 
-<!-- TODO(S4.2): confirmar cobertura real -->
-
-- **Testes unitários** no núcleo do serviço: extração, montagem de payload, assinatura HMAC (vetores conhecidos), classificação transitória-vs-permanente, tratamento de replay idempotente.
-- **CI** (GitHub Actions): `dotnet test` em todo push.
-- **QA cego** contra os critérios de aceite do PRD, com relatório em [`_bmad-output/implementation-artifacts/qa-report.md`](_bmad-output/implementation-artifacts/) <!-- TODO(S4.3) -->.
+- **Testes automatizados do serviço** cobrem contrato de aceite da API (`202`, `401`, `400`, `404`, falha ao enfileirar), assinatura HMAC, montagem do payload do webhook, retry em falha transitória, idempotência (`duplicate: true`) e falhas permanentes do pipeline (`invalid_url`, `source_not_found`, `source_not_article`, `401/422` do receptor).
+- **CI versionado** em [`.github/workflows/dotnet-test.yml`](.github/workflows/dotnet-test.yml): `restore`, `build` e `dotnet test` da solution em todo push.
+- **QA cego** permanece como fechamento de `S4.3`; o relatório final planejado ficará em [`_bmad-output/implementation-artifacts/qa-report.md`](_bmad-output/implementation-artifacts/).
 
 ## Estrutura do repositório
 
@@ -153,7 +172,7 @@ service/            # Serviço .NET: API + worker + testes
 wp-plugin/          # Plugin WordPress: receptor do webhook
 wp-theme/           # Tema Bootstrap/SASS (Vite)
 docker/             # elasticmq.conf, wp-init, schema pipeline
-postman/            # Coleção + environment (HMAC automático)
+.github/            # Workflow de CI para restore/build/test
 docs/               # Enunciado do desafio
 _bmad-output/       # Artefatos do método: PRD, arquitetura, stories, QA
 ```
