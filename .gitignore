@@ -18,6 +18,3 @@ TestResults/
 # OS / editor
 .DS_Store
 Thumbs.db
-
-# Local orchestration scratch
-.claude/worktrees/
