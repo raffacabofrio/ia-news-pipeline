@@ -1,8 +1,8 @@
 # IA News Pipeline
 
-
-
 Esse projeto trata-se de uma prova de conceito. Um pipeline de ponta a ponta que recebe a URL de um artigo público, gera uma nova versão do conteúdo com IA generativa e publica automaticamente em um portal de notícias em WordPress.
+
+É uma aplicação que é dockerizada, facilemnte deployada em qualquer cloud. Sem vendor lock-in. Construída com as melhores práticas da engenharia para escalar e ser resiliente, tolerante a falhas e self-healing.
 
 O conceito a ser provado aqui é que metodologias bem estruturadas de desenvolvimento aumentam significativamente a produtividade dos times. Nesse caso **o prazo esperado era 3 dias e conseguimos adiantar para um dia.**
 
