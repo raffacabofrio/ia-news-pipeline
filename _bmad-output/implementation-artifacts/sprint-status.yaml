@@ -58,15 +58,15 @@ development_status:
   epic-0-retrospective: optional
   epic-1: in-progress
   1-1-intake-api-job-store: done
-  1-2-worker-pipeline: backlog
+  1-2-worker-pipeline: review
   1-3-unit-tests: backlog
   epic-1-retrospective: optional
   epic-2: done
   2-1-receiver-endpoint: done
   epic-2-retrospective: optional
-  epic-3: in-progress
+  epic-3: done
   3-1-theme-scaffold-build: done
-  3-2-single-php-centerpiece: backlog
+  3-2-single-php-centerpiece: done
   epic-3-retrospective: optional
   epic-4: backlog
   4-1-postman-collection: backlog

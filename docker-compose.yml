@@ -59,6 +59,23 @@ services:
       PIPELINE_SHARED_SECRET: ${PIPELINE_SHARED_SECRET:-replace-me}
       MYSQL_CONNECTION: ${MYSQL_CONNECTION:-Server=mysql;Port=3306;Database=pipeline;Uid=wordpress;Pwd=wordpress;}
 
+  worker:
+    build:
+      context: .
+      dockerfile: ./service/IaNewsPipeline.Worker/Dockerfile
+    depends_on:
+      mysql:
+        condition: service_healthy
+      elasticmq:
+        condition: service_started
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-replace-me}
+      SQS_ENDPOINT: ${SQS_ENDPOINT:-http://elasticmq:9324}
+      QUEUE_NAME: ${QUEUE_NAME:-pipeline-jobs}
+      WP_WEBHOOK_URL: ${WP_WEBHOOK_URL:-http://wordpress/wp-json/ia-pipeline/v1/posts}
+      PIPELINE_SHARED_SECRET: ${PIPELINE_SHARED_SECRET:-replace-me}
+      MYSQL_CONNECTION: ${MYSQL_CONNECTION:-Server=mysql;Port=3306;Database=pipeline;Uid=wordpress;Pwd=wordpress;}
+
   wordpress:
     image: wordpress:6.8-apache
     depends_on:

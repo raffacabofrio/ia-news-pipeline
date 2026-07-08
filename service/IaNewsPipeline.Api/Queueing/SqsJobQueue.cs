@@ -6,6 +6,9 @@ namespace IaNewsPipeline.Api.Queueing;
 
 public sealed class SqsJobQueue : IJobQueue
 {
+    private const int LongPollSeconds = 20;
+    private const int VisibilityTimeoutSeconds = 120;
+
     private readonly AmazonSQSClient _client;
     private readonly string _queueName;
     private string? _queueUrl;
@@ -25,6 +28,30 @@ public sealed class SqsJobQueue : IJobQueue
             QueueUrl = _queueUrl,
             MessageBody = jobId.ToString(),
         }, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<QueuedJobMessage>> ReceiveAsync(CancellationToken cancellationToken)
+    {
+        _queueUrl ??= (await _client.GetQueueUrlAsync(_queueName, cancellationToken)).QueueUrl;
+
+        var response = await _client.ReceiveMessageAsync(new ReceiveMessageRequest
+        {
+            QueueUrl = _queueUrl,
+            MaxNumberOfMessages = 5,
+            WaitTimeSeconds = LongPollSeconds,
+            VisibilityTimeout = VisibilityTimeoutSeconds,
+        }, cancellationToken);
+
+        return response.Messages
+            .Select(message => new QueuedJobMessage(message.ReceiptHandle, message.Body))
+            .ToArray();
+    }
+
+    public async Task DeleteAsync(string receiptHandle, CancellationToken cancellationToken)
+    {
+        _queueUrl ??= (await _client.GetQueueUrlAsync(_queueName, cancellationToken)).QueueUrl;
+
+        await _client.DeleteMessageAsync(_queueUrl, receiptHandle, cancellationToken);
     }
 
     private static AmazonSQSClient CreateClient(string endpoint)

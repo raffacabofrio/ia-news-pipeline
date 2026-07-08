@@ -209,6 +209,16 @@ public sealed class GeneratePostApiTests
             EnqueuedJobIds.Add(jobId);
             return Task.CompletedTask;
         }
+
+        public Task<IReadOnlyList<QueuedJobMessage>> ReceiveAsync(CancellationToken cancellationToken)
+        {
+            return Task.FromResult<IReadOnlyList<QueuedJobMessage>>([]);
+        }
+
+        public Task DeleteAsync(string receiptHandle, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class FakeJobStore : IJobStore
@@ -235,12 +245,58 @@ public sealed class GeneratePostApiTests
             return Task.FromResult(CreatedJobs.SingleOrDefault(job => job.JobId == jobId));
         }
 
+        public Task MarkProcessingAsync(Guid jobId, CancellationToken cancellationToken)
+        {
+            Update(jobId, job => job with { State = JobStates.Processing });
+            return Task.CompletedTask;
+        }
+
+        public Task MarkPublishingAsync(
+            Guid jobId,
+            string rewriteModel,
+            DateTimeOffset generatedAt,
+            CancellationToken cancellationToken)
+        {
+            Update(jobId, job => job with
+            {
+                State = JobStates.Publishing,
+                RewriteModel = rewriteModel,
+                GeneratedAt = generatedAt,
+            });
+
+            return Task.CompletedTask;
+        }
+
+        public Task MarkPublishedAsync(
+            Guid jobId,
+            string postUrl,
+            string rewriteModel,
+            DateTimeOffset generatedAt,
+            CancellationToken cancellationToken)
+        {
+            Update(jobId, job => job with
+            {
+                State = JobStates.Published,
+                PublishedPostUrl = postUrl,
+                Error = null,
+                RewriteModel = rewriteModel,
+                GeneratedAt = generatedAt,
+            });
+
+            return Task.CompletedTask;
+        }
+
         public Task MarkFailedAsync(Guid jobId, string error, CancellationToken cancellationToken)
+        {
+            Update(jobId, job => job with { State = JobStates.Failed, Error = error });
+            return Task.CompletedTask;
+        }
+
+        private void Update(Guid jobId, Func<JobRecord, JobRecord> update)
         {
             var index = CreatedJobs.FindIndex(job => job.JobId == jobId);
             var current = CreatedJobs[index];
-            CreatedJobs[index] = current with { State = JobStates.Failed, Error = error };
-            return Task.CompletedTask;
+            CreatedJobs[index] = update(current);
         }
     }
 }

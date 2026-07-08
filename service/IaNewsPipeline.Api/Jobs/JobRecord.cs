@@ -5,4 +5,6 @@ public sealed record JobRecord(
     string State,
     string SourceUrl,
     string? PublishedPostUrl,
-    string? Error);
+    string? Error,
+    string? RewriteModel = null,
+    DateTimeOffset? GeneratedAt = null);
