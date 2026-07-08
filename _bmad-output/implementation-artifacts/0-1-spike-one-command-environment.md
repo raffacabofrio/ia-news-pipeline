@@ -4,7 +4,7 @@ baseline_commit: ac5c0e8f7b1373fa184437da65de2b327841adbb
 
 # Story 0.1: Spike: one-command environment
 
-Status: review
+Status: done
 
 **Timebox: 90 minutes.** This is a spike with an explicit degradation path (see "Degradation" below). Track your time; if the timebox blows, degrade — do not keep polishing.
 
@@ -49,6 +49,11 @@ so that I can run and re-run the pipeline autonomously with no undocumented manu
   - [x] `docker compose down -v` then `docker compose up` from scratch; confirm WP reachable, plugin+theme active (`wp plugin list` / browser), ElasticMQ ListQueues answers
 - [x] Task 8 (only if timebox blows): Degradation path — NOT TRIGGERED (see Completion Notes)
   - [x] Drop wp-init; document a 3-step manual wizard (browser install → activate plugin/theme → set permalinks) in a `docker/README-bootstrap.md` note for later merge into root README (S4.2)
+
+### Review Findings
+
+- [x] [Review][Patch] `MYSQL_USER` configurável no compose, mas grant do schema `pipeline` segue hardcoded para `'wordpress'` [docker-compose.yml:27]
+- [x] [Review][Patch] `WP_PORT` pode ser sobrescrito sem atualizar o `WP_URL` usado no `wp core install`, deixando a instância instalada com URL/permalinks inconsistentes [docker-compose.yml:79]
 
 ## Dev Notes
 
@@ -153,3 +158,4 @@ claude-fable-5 (Claude Fable 5, Claude Code dev-story workflow)
 ## Change Log
 
 - 2026-07-07: S0.1 implemented — one-command compose stack (mysql dual-schema, ElasticMQ with DLQ redrive 5, WordPress with placeholder plugin/theme bind mounts, idempotent one-shot wp-init). All 6 ACs verified against a clean `docker compose down -v && docker compose up` boot plus an idempotent re-run. Status → review.
+- 2026-07-07: Addressed code review findings - 2 items resolved (Date: 2026-07-07)

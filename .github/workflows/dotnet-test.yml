@@ -1,0 +1,28 @@
+name: dotnet-test
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore service/IaNewsPipeline.sln
+
+      - name: Build
+        run: dotnet build service/IaNewsPipeline.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test service/IaNewsPipeline.sln --configuration Release --no-build

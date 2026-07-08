@@ -6,7 +6,8 @@
 set -eu
 
 WP_PATH=/var/www/html
-WP_URL="${WP_URL:-http://localhost:8080}"
+WP_PORT="${WP_PORT:-8080}"
+WP_URL="${WP_URL:-http://localhost:${WP_PORT}}"
 WP_TITLE="${WP_TITLE:-IA News}"
 WP_ADMIN_USER="${WP_ADMIN_USER:-admin}"
 WP_ADMIN_PASSWORD="${WP_ADMIN_PASSWORD:-admin}"
