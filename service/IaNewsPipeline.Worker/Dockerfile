@@ -12,7 +12,7 @@ COPY service/IaNewsPipeline.Worker/ service/IaNewsPipeline.Worker/
 
 RUN dotnet publish service/IaNewsPipeline.Worker/IaNewsPipeline.Worker.csproj -c Release -o /app/publish /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/runtime:10.0
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 
 COPY --from=build /app/publish .
