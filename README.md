@@ -135,7 +135,7 @@ Exemplo mínimo de resposta de aceite:
 }
 ```
 
-`S4.1` ainda deve entregar a coleção Postman para automatizar essa assinatura e transformar este roteiro em clique-a-clique.
+A coleção Postman em [`postman/`](postman/) automatiza essa assinatura: importe `ia-news-pipeline.postman_collection.json` e `ia-news-pipeline.postman_environment.json`, preencha `PIPELINE_SHARED_SECRET` e rode as três requisições prontas (happy path, assinatura inválida, polling de job) sem calcular nada à mão.
 
 ## Fora do escopo — e o caminho de produção
 

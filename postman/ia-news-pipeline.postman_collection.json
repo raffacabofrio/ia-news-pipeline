@@ -1,0 +1,225 @@
+{
+  "info": {
+    "_postman_id": "9f1b6c2e-6a4d-4e2a-9a5e-2c1f7d3b8a10",
+    "name": "IA News Pipeline",
+    "description": "Story S4.1: Postman collection for the two frozen `service` endpoints (architecture §5.2). The collection-level pre-request script computes `X-Pipeline-Timestamp` and `X-Pipeline-Signature` (HMAC-SHA256, hex, `sha256=` prefix) exactly as implemented in `service/IaNewsPipeline.Api/Security/HmacRequestValidator.cs`, so the evaluator never has to hand-compute a signature.\n\nSetup: import this collection and the accompanying `ia-news-pipeline.postman_environment.json`, select that environment, fill in `PIPELINE_SHARED_SECRET` with the value from your local `.env` (matches `PIPELINE_SHARED_SECRET` in `docker-compose.yml` / `.env.example`), and run the three requests top to bottom: 1) Generate Post — Happy Path, 2) Generate Post — Bad Signature, 3) Get Job Status.\n\nOut of scope (see story Dev Notes): the WordPress webhook receiver (§5.1) is service→WordPress only, never called from Postman.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Collection-level HMAC signer (architecture.md #5, D4; matches HmacRequestValidator.cs).",
+          "// Skipped entirely for GET requests: GET /api/jobs/{id} is intentionally unauthenticated",
+          "// per architecture.md #5.2 (\"GET /api/jobs/{id} — no auth (POC; documented)\") and Program.cs",
+          "// (no HmacRequestValidator is wired into that route). Adding signature headers there would be",
+          "// harmless server-side but would misrepresent the contract, so this script does not run for GET.",
+          "if (pm.request.method === 'GET') {",
+          "    return;",
+          "}",
+          "",
+          "var secret = pm.environment.get('PIPELINE_SHARED_SECRET');",
+          "var timestamp = Math.floor(Date.now() / 1000).toString();",
+          "",
+          "// CRITICAL: resolve {{variables}} in the body BEFORE signing. Postman's pre-request script runs",
+          "// before variable substitution happens on the outgoing request, so pm.request.body.raw still",
+          "// contains unresolved '{{...}}' placeholders at this point. Signing that unresolved text would",
+          "// produce a signature that never matches the bytes actually transmitted. pm.variables.replaceIn()",
+          "// resolves them explicitly first. This is defensive even for today's static bodies, so the script",
+          "// doesn't silently break the moment someone parameterizes a body later.",
+          "var rawBody = (pm.request.body && pm.request.body.raw)",
+          "    ? pm.variables.replaceIn(pm.request.body.raw)",
+          "    : '';",
+          "",
+          "// CryptoJS is available globally in the Postman sandbox (no require/pm.require needed).",
+          "// .toString() on an HMAC WordArray defaults to lowercase hex, matching .NET's",
+          "// Convert.ToHexStringLower used server-side — do not add an uppercase transform.",
+          "var signature = 'sha256=' + CryptoJS.HmacSHA256(timestamp + '.' + rawBody, secret).toString();",
+          "",
+          "pm.request.headers.upsert({ key: 'X-Pipeline-Timestamp', value: timestamp });",
+          "pm.request.headers.upsert({ key: 'X-Pipeline-Signature', value: signature });"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "job_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Generate Post — Happy Path",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 202 Accepted', function () {",
+              "    pm.response.to.have.status(202);",
+              "});",
+              "",
+              "pm.test('Response has job_id and status_url', function () {",
+              "    var body = pm.response.json();",
+              "    pm.expect(body).to.have.property('job_id').that.is.a('string').and.is.not.empty;",
+              "    pm.expect(body).to.have.property('status_url').that.is.a('string').and.is.not.empty;",
+              "});",
+              "",
+              "if (pm.response.code === 202) {",
+              "    var body = pm.response.json();",
+              "    pm.collectionVariables.set('job_id', body.job_id);",
+              "    console.log('Captured job_id for polling: ' + body.job_id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"url\":\"https://example.com/article\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/generate-post",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "generate-post"
+          ]
+        },
+        "description": "Signed by the collection-level pre-request script using {{PIPELINE_SHARED_SECRET}}. Expects `202 Accepted` with body `{ \"job_id\": \"<guid>\", \"status_url\": \"/api/jobs/<guid>\" }` (relative path). `job_id` is captured into the `job_id` collection variable so the \"Get Job Status\" request can reuse it without manual copy-paste.\n\nNote: `PublicUrlValidator` rejects loopback/localhost and private/reserved IP ranges — the URL must be a real, publicly resolvable address (a plain hostname like example.com passes; swap for another public article URL if you want a real extraction/publish result)."
+      },
+      "response": []
+    },
+    {
+      "name": "Generate Post — Bad Signature",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Request-level script runs AFTER the collection-level script (Postman execution order is",
+              "// collection -> folder -> request), so this intentionally overwrites the correctly-signed",
+              "// headers with a signature computed against a hardcoded wrong secret. That makes this request",
+              "// deterministically 401 regardless of what the evaluator put in PIPELINE_SHARED_SECRET.",
+              "var wrongSecret = 'wrong-secret';",
+              "var timestamp = Math.floor(Date.now() / 1000).toString();",
+              "var rawBody = (pm.request.body && pm.request.body.raw)",
+              "    ? pm.variables.replaceIn(pm.request.body.raw)",
+              "    : '';",
+              "",
+              "var signature = 'sha256=' + CryptoJS.HmacSHA256(timestamp + '.' + rawBody, wrongSecret).toString();",
+              "",
+              "pm.request.headers.upsert({ key: 'X-Pipeline-Timestamp', value: timestamp });",
+              "pm.request.headers.upsert({ key: 'X-Pipeline-Signature', value: signature });"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 401 Unauthorized', function () {",
+              "    pm.response.to.have.status(401);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"url\":\"https://example.com/article\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/generate-post",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "generate-post"
+          ]
+        },
+        "description": "Demonstrates the `401` path deterministically: this request's own pre-request script re-signs the body with a hardcoded wrong secret (`\"wrong-secret\"`), so it fails regardless of the evaluator's real `PIPELINE_SHARED_SECRET`. Expects `401 Unauthorized` with an empty body (`Results.Unauthorized()` server-side — no body shape to assert)."
+      },
+      "response": []
+    },
+    {
+      "name": "Get Job Status",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has job_id and state', function () {",
+              "    var body = pm.response.json();",
+              "    pm.expect(body).to.have.property('job_id').that.is.a('string').and.is.not.empty;",
+              "    pm.expect(body).to.have.property('state').that.is.a('string').and.is.not.empty;",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    console.log('Job ' + pm.response.json().job_id + ' is in state: ' + pm.response.json().state);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/jobs/{{job_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "jobs",
+            "{{job_id}}"
+          ]
+        },
+        "description": "Unsigned by design — per architecture.md §5.2 (\"GET /api/jobs/{id} — no auth (POC; documented)\") and confirmed against Program.cs (this route has no HmacRequestValidator dependency). No signature headers are sent or required.\n\nUses the `job_id` collection variable captured by \"Generate Post — Happy Path\". Expects `200 OK` with body `{ \"job_id\", \"state\", \"post_url\"?, \"error\"? }`.\n\n`state` values (service/IaNewsPipeline.Api/Jobs/JobStates.cs), in expected progression order:\n- `queued` — accepted, waiting for the worker to pick it up off the queue\n- `processing` — worker is extracting the article and generating content via OpenAI\n- `publishing` — worker is POSTing the signed webhook to the WordPress receiver\n- `published` — terminal success; `post_url` is populated with the live WordPress post URL\n- `failed` — terminal failure; `error` is populated with a machine-readable reason (e.g. `invalid_url`, `source_not_found`, `source_not_article`, a receiver `401`/`422`, or a permanent OpenAI/network failure)\n\nRe-run this request (or use Postman's Collection Runner / Runner delay) to poll until `state` reaches `published` or `failed`."
+      },
+      "response": []
+    }
+  ]
+}
