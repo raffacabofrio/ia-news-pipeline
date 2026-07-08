@@ -50,3 +50,28 @@ test("theme declares the supported Node.js floor for the pinned Vite toolchain",
 
   assert.equal(packageJson.engines.node, ">=20.19.0 || >=22.12.0");
 });
+
+test("single template exposes the centerpiece hooks required by story 3.2", () => {
+  const singlePhp = readThemeFile("single.php");
+  const styles = readThemeFile("src", "styles", "main.scss");
+
+  assert.match(singlePhp, /single-feature__measure/);
+  assert.match(singlePhp, /single-feature__lead/);
+  assert.match(singlePhp, /single-feature__attribution/);
+  assert.match(singlePhp, /AI-generated/);
+  assert.match(singlePhp, /_pipeline_source_url/);
+  assert.match(singlePhp, /_pipeline_model/);
+  assert.match(styles, /\.single-feature__measure/);
+  assert.match(styles, /\.single-feature__lead/);
+  assert.match(styles, /\.single-feature__badge/);
+  assert.match(styles, /@media \(max-width: 575\.98px\)/);
+});
+
+test("theme ships a focused runtime verifier for the single-post centerpiece", () => {
+  const runtimeVerifier = readThemeFile("tests", "single-template-runtime.php");
+
+  assert.match(runtimeVerifier, /single-feature__badge/);
+  assert.match(runtimeVerifier, /Read original source/);
+  assert.match(runtimeVerifier, /Attribution block should disappear cleanly/);
+  assert.match(runtimeVerifier, /Lead paragraph should not render when excerpt is empty/);
+});
