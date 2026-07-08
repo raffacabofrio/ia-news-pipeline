@@ -1,4 +1,4 @@
-# Architecture — AI Content Pipeline (Portal Tela Challenge)
+# Architecture — AI Content Pipeline (Technical Challenge)
 
 **Author:** Winston (Architect) with Raffa · **Date:** 2026-07-07 · **Status:** Frozen (v1)
 **Upstream:** `prd.md` · **Downstream:** epics & stories, three parallel implementation workstreams
@@ -39,7 +39,7 @@ One .NET process hosts both API and worker (POC decision; split documented as pr
 | D3 | **Idempotency owned by the receiver (WP plugin)** | Exactly-once = at-least-once delivery + idempotent receiver. Plugin checks post meta `_pipeline_job_id` before insert; hit → HTTP 200 with existing post, `duplicate: true`. |
 | D4 | **HMAC-SHA256 signatures on both endpoints** | Secret never travels; tampering detected; replay window enforced via timestamp. Stripe/GitHub webhook pattern. Postman collection ships a pre-request script computing the signature. |
 | D5 | **`wp-init` one-shot container (WP-CLI)** | `docker compose up` → WP installed, plugin + theme active, permalinks set. Spike (Story 0, timeboxed); graceful degradation = 3-step manual wizard in README. |
-| D6 | Extraction `@mozilla/readability`-equivalent in .NET: **SmartReader** (Readability port) · OpenAI small model, JSON-structured output · Theme assets via **Vite** + Bootstrap SASS | Boring, proven, and Vite is Portal Tela's stack. |
+| D6 | Extraction `@mozilla/readability`-equivalent in .NET: **SmartReader** (Readability port) · OpenAI small model, JSON-structured output · Theme assets via **Vite** + Bootstrap SASS | Boring, proven, and already the target news portal's frontend stack. |
 
 ## 3. Service internals (.NET)
 

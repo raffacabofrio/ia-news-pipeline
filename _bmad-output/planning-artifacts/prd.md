@@ -1,4 +1,4 @@
-# PRD — AI Content Pipeline (Portal Tela Technical Challenge)
+# PRD — AI Content Pipeline (Technical Challenge)
 
 **Author:** John (PM) with Raffa · **Date:** 2026-07-07 · **Status:** Draft for review
 **Source:** `docs/desafio-portal-tela.pdf` (challenge v1.0) + evaluator profile analysis
@@ -7,7 +7,7 @@
 
 ## 1. Context & Thesis
 
-This is a proof of concept built for the Portal Tela technical challenge. The product will not go to real production — and that is a deliberate, documented decision, not a limitation.
+This is a proof of concept built for a technical challenge. The product will not go to real production — and that is a deliberate, documented decision, not a limitation.
 
 **The thesis being demonstrated:** AI-assisted engineering with advanced context engineering (Spec-Driven Development / BMAD method) delivers in 1 day what conventionally takes 3+, **without sacrificing engineering rigor** — spec as source of truth, decoupled verification, resilience, tests, CI.
 
@@ -17,7 +17,7 @@ The delivery timestamp trail (receipt confirmation → repo invite) is part of t
 
 | Persona | Role | What they need |
 |---|---|---|
-| **Michel (primary)** | Evaluator, Tech Lead Portal Tela | Clone, run everything with one command, see it work, read decisions with clear rationale, verify engineering maturity |
+| **Michel (primary)** | Evaluator, Tech Lead | Clone, run everything with one command, see it work, read decisions with clear rationale, verify engineering maturity |
 | Content editor (secondary, fictional) | Scenario persona | Submit an article URL and get a rewritten post published on WordPress |
 
 When the two personas conflict, **Michel wins**.

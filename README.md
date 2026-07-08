@@ -1,10 +1,22 @@
 # IA News Pipeline
 
-> Pipeline de ponta a ponta que recebe a URL de um artigo público, gera uma nova versão do conteúdo com IA generativa e publica automaticamente em um site WordPress — desafio técnico do Portal Tela, **entregue em 1 dia de um prazo de 3**, com processo de engenharia documentado e auditável neste próprio repositório.
 
-<!-- TODO(S4.2): adicionar badge quando o repositório público estiver estabilizado -->
 
----
+Esse projeto trata-se de uma prova de conceito. Um pipeline de ponta a ponta que recebe a URL de um artigo público, gera uma nova versão do conteúdo com IA generativa e publica automaticamente em um portal de notícias em WordPress.
+
+O conceito a ser provado aqui é que metodologias bem estruturadas de desenvolvimento aumentam significativamente a produtividade dos times. Nesse caso **o prazo esperado era 3 dias e conseguimos adiantar para um dia.**
+
+- **SDD (Spec-Driven Development)**: o projeto foi guiado por especificações antes da implementação. Em vez de começar pelo código, começamos por requisitos, arquitetura e critérios de aceite congelados, reduzindo ambiguidade e retrabalho.
+- **BMAD**: framework usado para operacionalizar esse fluxo de trabalho. Ele estruturou a produção dos artefatos de planejamento, a divisão em stories independentes e a execução com agentes isolados por contexto.
+- **Claude Code**: usado principalmente no upstream do projeto, apoiando a construção e o refinamento dos artefatos de definição, como requisitos, arquitetura, decomposição em stories e alinhamento do plano de execução.
+- **Codex**: usado principalmente no downstream, atuando sobre o repositório para implementar mudanças, editar arquivos, revisar trechos específicos e acelerar a transformação das definições em código executável.
+
+
+## Desenho de arquitetura 
+![Desenho de arquitetura](docs/desenho-arquitetura.png)
+
+## Workflow agêntico BMAD
+![Workflow agêntico BMAD](docs/bmad-workflow.png)
 
 ## Sumário executivo
 
@@ -180,4 +192,4 @@ _bmad-output/       # Artefatos do método: PRD, arquitetura, stories, QA
 
 ---
 
-*Raffaello Damgaard · [LinkedIn](https://www.linkedin.com/in/raffacabofrio/) · Desafio técnico Portal Tela, julho/2026.*
+*Raffaello Damgaard · [LinkedIn](https://www.linkedin.com/in/raffacabofrio/) · Desafio técnico, julho/2026.*
