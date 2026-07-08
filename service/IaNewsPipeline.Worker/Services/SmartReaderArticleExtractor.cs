@@ -8,7 +8,11 @@ public sealed class SmartReaderArticleExtractor : IArticleExtractor
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var article = Reader.ParseArticle(sourceUrl.ToString(), html);
+        // Use the instance-based Reader API rather than the static Reader.ParseArticle helper: the static
+        // helper throws an internal FormatException for every input in SmartReader 0.11.0 (swallowed into
+        // Article.Errors, silently forcing IsReadable=false regardless of content), which made extraction
+        // permanently non-functional. The instance API produces the correct, documented result. [S1.3]
+        var article = new Reader(sourceUrl.ToString(), html).GetArticle();
 
         if (!article.IsReadable || string.IsNullOrWhiteSpace(article.Content))
         {

@@ -59,7 +59,7 @@ development_status:
   epic-1: in-progress
   1-1-intake-api-job-store: done
   1-2-worker-pipeline: done
-  1-3-unit-tests: backlog
+  1-3-unit-tests: done
   epic-1-retrospective: optional
   epic-2: done
   2-1-receiver-endpoint: done
