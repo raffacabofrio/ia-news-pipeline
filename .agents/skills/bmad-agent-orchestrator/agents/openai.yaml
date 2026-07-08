@@ -1,0 +1,7 @@
+interface:
+  display_name: "Orchestrator"
+  short_description: "Drive BMad workstreams to done"
+  default_prompt: "Use $bmad-agent-orchestrator to dispatch BMad delivery fronts and keep them moving to done."
+
+policy:
+  allow_implicit_invocation: true
