@@ -89,7 +89,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"url\":\"https://example.com/article\"}",
+          "raw": "{\"url\":\"{{article_url}}\"}",
           "options": {
             "raw": {
               "language": "json"
@@ -106,7 +106,7 @@
             "generate-post"
           ]
         },
-        "description": "Signed by the collection-level pre-request script using {{PIPELINE_SHARED_SECRET}}. Expects `202 Accepted` with body `{ \"job_id\": \"<guid>\", \"status_url\": \"/api/jobs/<guid>\" }` (relative path). `job_id` is captured into the `job_id` collection variable so the \"Get Job Status\" request can reuse it without manual copy-paste.\n\nNote: `PublicUrlValidator` rejects loopback/localhost and private/reserved IP ranges — the URL must be a real, publicly resolvable address (a plain hostname like example.com passes; swap for another public article URL if you want a real extraction/publish result)."
+        "description": "Signed by the collection-level pre-request script using {{PIPELINE_SHARED_SECRET}}. Expects `202 Accepted` with body `{ \"job_id\": \"<guid>\", \"status_url\": \"/api/jobs/<guid>\" }` (relative path). `job_id` is captured into the `job_id` collection variable so the \"Get Job Status\" request can reuse it without manual copy-paste.\n\nThe request body uses `{{article_url}}`, which defaults to a publicly reachable article URL that passed the S4.3 happy-path verification. Replace it with another public article URL when desired.\n\nNote: `PublicUrlValidator` rejects loopback/localhost and private/reserved IP ranges."
       },
       "response": []
     },
@@ -157,7 +157,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"url\":\"https://example.com/article\"}",
+          "raw": "{\"url\":\"{{article_url}}\"}",
           "options": {
             "raw": {
               "language": "json"

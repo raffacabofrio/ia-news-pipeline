@@ -109,10 +109,11 @@ O compose sobe `mysql`, `elasticmq`, `service`, `worker`, `wordpress` e o bootst
 ## Testando
 
 1. Suba a stack com `docker compose up` e confirme que o bootstrap terminou com `wp-init exited with code 0` (isso é sucesso, não erro).
-2. Gere uma assinatura HMAC-SHA256 sobre `timestamp.payload` com o mesmo `PIPELINE_SHARED_SECRET` do `.env`, então dispare `POST /api/generate-post` para `http://localhost:8081/api/generate-post` com body `{"url":"https://example.com/article"}`.
-3. Use o `job_id` retornado no `202 Accepted` para consultar `GET http://localhost:8081/api/jobs/{id}` até o estado chegar a `published` ou `failed`.
-4. Abra o WordPress em `http://localhost:8080` e confirme o post publicado no tema customizado.
-5. Drill de resiliência: `docker compose stop wordpress` → dispare uma URL → observe o job ficar pendente de publicação → `docker compose start wordpress` → o worker deve concluir a entrega sem duplicar o post.
+2. Para o **caminho feliz**, use uma URL pública real de artigo. A coleção Postman já vem preparada para isso com `article_url = https://en.wikipedia.org/wiki/Artificial_intelligence`.
+3. Rode a coleção Postman em [`postman/`](postman/) preenchendo `PIPELINE_SHARED_SECRET`; a requisição "Generate Post — Happy Path" assina o request automaticamente e retorna o `job_id`.
+4. Reexecute "Get Job Status" até o estado chegar a `published`; no fluxo validado desta POC, a publicação apareceu em `http://localhost:8080/artificial-intelligence/`.
+5. Abra o WordPress em `http://localhost:8080` e confirme o post publicado no tema customizado.
+6. Drill de resiliência: `docker compose stop wordpress` → dispare a mesma URL pública → observe o job chegar a `publishing` sem terminalizar → `docker compose start wordpress` → o worker deve concluir a entrega sem duplicar o post.
 
 Exemplo mínimo do contrato de entrada:
 
@@ -122,7 +123,7 @@ Content-Type: application/json
 X-Pipeline-Timestamp: <unix-seconds>
 X-Pipeline-Signature: sha256=<hmac(timestamp + "." + body)>
 
-{"url":"https://example.com/article"}
+{"url":"https://en.wikipedia.org/wiki/Artificial_intelligence"}
 ```
 
 Exemplo mínimo de resposta de aceite:
@@ -135,7 +136,7 @@ Exemplo mínimo de resposta de aceite:
 }
 ```
 
-A coleção Postman em [`postman/`](postman/) automatiza essa assinatura: importe `ia-news-pipeline.postman_collection.json` e `ia-news-pipeline.postman_environment.json`, preencha `PIPELINE_SHARED_SECRET` e rode as três requisições prontas (happy path, assinatura inválida, polling de job) sem calcular nada à mão.
+A coleção Postman em [`postman/`](postman/) automatiza essa assinatura: importe `ia-news-pipeline.postman_collection.json` e `ia-news-pipeline.postman_environment.json`, preencha `PIPELINE_SHARED_SECRET` e rode as três requisições prontas (happy path, assinatura inválida, polling de job) sem calcular nada à mão. O ambiente já define `article_url` com uma URL pública que passou no QA cego; troque-a se quiser testar outro artigo real.
 
 ## Fora do escopo — e o caminho de produção
 

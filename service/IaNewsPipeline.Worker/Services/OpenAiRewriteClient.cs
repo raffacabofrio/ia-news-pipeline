@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.RegularExpressions;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -10,6 +11,7 @@ public sealed class OpenAiRewriteClient(
     HttpClient httpClient,
     OpenAiOptions options) : IOpenAiRewriteClient
 {
+    private const int MaxSourceMaterialCharacters = 12_000;
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
 
     public async Task<RewriteResult> RewriteAsync(
@@ -17,6 +19,8 @@ public sealed class OpenAiRewriteClient(
         ExtractedArticle article,
         CancellationToken cancellationToken)
     {
+        var sourceMaterial = BuildSourceMaterial(article.ContentHtml);
+
         using var request = new HttpRequestMessage(HttpMethod.Post, "v1/chat/completions");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", options.ApiKey);
         request.Content = JsonContent.Create(new
@@ -27,7 +31,7 @@ public sealed class OpenAiRewriteClient(
                 new
                 {
                     role = "system",
-                    content = "Rewrite the article into JSON with exactly title, content_html, and excerpt."
+                    content = "Rewrite the article into JSON with exactly title, content_html, and excerpt. Return valid JSON only. content_html must be well-formed editorial HTML using <p> paragraphs and optional <h2> subheadings."
                 },
                 new
                 {
@@ -36,8 +40,8 @@ public sealed class OpenAiRewriteClient(
                         Source URL: {sourceUrl}
                         Original title: {article.Title}
                         Original excerpt: {article.Excerpt}
-                        Original content:
-                        {article.ContentHtml}
+                        Original content (plain text, may be truncated for token safety):
+                        {sourceMaterial}
                         """
                 }
             },
@@ -120,6 +124,19 @@ public sealed class OpenAiRewriteClient(
         {
             return RewriteResult.TransientFailure("openai_unavailable");
         }
+    }
+
+    private static string BuildSourceMaterial(string contentHtml)
+    {
+        var plainText = Regex.Replace(WebUtility.HtmlDecode(contentHtml), "<[^>]+>", " ");
+        plainText = Regex.Replace(plainText, @"\s+", " ").Trim();
+
+        if (plainText.Length <= MaxSourceMaterialCharacters)
+        {
+            return plainText;
+        }
+
+        return plainText[..MaxSourceMaterialCharacters].TrimEnd() + " [truncated]";
     }
 
     private sealed class OpenAiResponse
