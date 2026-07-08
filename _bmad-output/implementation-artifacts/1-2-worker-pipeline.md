@@ -4,7 +4,7 @@ baseline_commit: 8630f1c39b9cdc2d2e7e35b3c70f913d0b919a00
 
 # Story 1.2: Worker pipeline
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -49,6 +49,13 @@ so that article rewriting continues reliably even when extraction, OpenAI, or Wo
   - [x] Add worker-centric tests for happy path, duplicate replay success, stub unavailable then success on retry, invalid URL/404, non-article extraction, and webhook `401`/`422`.
   - [x] Keep verification independent from Epic 2 by using a stub webhook and test doubles around queue receipt/deletion and OpenAI/extraction seams.
   - [x] Keep existing `S1.1` tests green; this story must not regress the intake API contract.
+
+### Review Findings
+
+- [x] [Review][Patch] `pipeline.jobs` schema was never extended for the new `rewrite_model`/`generated_at_utc` columns, so the worker would throw against the real MySQL stack `MySqlJobStore.GetJobAsync`/`UpdateStateAsync` select and update `rewrite_model` and `generated_at_utc`, but `docker/mysql-init/01-pipeline-schema.sql`'s `CREATE TABLE` never gained those columns and no migration added them. Every state transition after intake (`processing`/`publishing`/`published`/`failed`) would fail with an "unknown column" SQL error outside of the unit-test doubles. Added the two columns to the `CREATE TABLE` plus idempotent `ALTER TABLE ... ADD COLUMN` guards (for stacks where the table already exists from a prior compose run). [service/IaNewsPipeline.Api/Jobs/MySqlJobStore.cs:35; docker/mysql-init/01-pipeline-schema.sql:12]
+- [x] [Review][Patch] AC5 requires `job_id` on every operational log line, but the worker never enabled scope inclusion on its console logger. `JobMessageProcessor` attaches `job_id` via `logger.BeginScope`, however `Host.CreateApplicationBuilder`'s default console formatter has `IncludeScopes = false`, so the scope data is silently dropped from actual log output — the requirement was implemented in code but not observable at runtime. Enabled `IncludeScopes` on the worker's console logger in `Program.cs`. [service/IaNewsPipeline.Worker/Program.cs:12; service/IaNewsPipeline.Worker/Services/JobMessageProcessor.cs:1006]
+- [x] [Review][Decision] Webhook `409 duplicate_in_progress` (a real response from the S2.1 receiver's concurrency lock, not part of the frozen §5.1 contract) falls through `WordPressWebhookPublisher`'s default branch and is classified as a permanent failure, which could incorrectly fail a job on a transient delivery race instead of retrying. Resolution: left as-is for this story. Fixing it correctly requires either amending the frozen §5.1 contract or the actual live receiver's behavior — both are explicitly out of scope per this story's "Scope boundaries" (stub-only verification; real end-to-end belongs to `S4.3`) and the "do not reinterpret the frozen contract" guardrail. Logged to `_bmad-output/implementation-artifacts/deferred-work.md` for a future correct-course/S4.3 pass instead of a same-story code change. [service/IaNewsPipeline.Worker/Services/WordPressWebhookPublisher.cs:83]
+- [x] [Review][Defer] No component marks a job `failed` once it exhausts SQS redelivery and moves to the DLQ, even though architecture §3 states "after 5 receives → DLQ + job row `failed` with reason." This story only implements per-message transient/permanent classification; DLQ consumption is new scope not listed in this story's Tasks/Subtasks or Testing requirements. Deferred to `_bmad-output/implementation-artifacts/deferred-work.md`. [service/IaNewsPipeline.Worker/Services/JobMessageProcessor.cs:1092]
 
 ## Dev Notes
 
@@ -263,4 +270,5 @@ Codex GPT-5
 
 - 2026-07-07: Story created and contexted for development. Status -> ready-for-dev.
 - 2026-07-07: Implemented the async worker pipeline, added stub-based worker tests, wired the compose worker runtime, and moved status to `review`.
+- 2026-07-07: Code review (adversarial, autonomous). Patched a missing `pipeline.jobs` schema migration for `rewrite_model`/`generated_at_utc` and enabled console log scopes so `job_id` is actually emitted per AC5. Resolved a webhook-409-vs-frozen-contract ambiguity by deferring it, and deferred a DLQ-failure-marking gap; both logged to `deferred-work.md`. `dotnet test service/IaNewsPipeline.sln` stayed green (19/19) throughout. Status -> `done`.
 

@@ -11,6 +11,12 @@ public static class WorkerProgram
     {
         var builder = Host.CreateApplicationBuilder(args);
 
+        // AC5 requires every operational log line to carry job_id. JobMessageProcessor attaches
+        // job_id via logger.BeginScope, but the default console formatter drops scope data unless
+        // IncludeScopes is explicitly enabled, so without this the job_id would never actually
+        // reach the log output.
+        builder.Logging.AddSimpleConsole(options => options.IncludeScopes = true);
+
         builder.Services.AddSingleton<IJobStore>(_ => new MySqlJobStore(GetRequiredSetting(builder.Configuration, "MYSQL_CONNECTION")));
         builder.Services.AddSingleton<IJobQueue>(_ => new SqsJobQueue(
             GetRequiredSetting(builder.Configuration, "SQS_ENDPOINT"),
